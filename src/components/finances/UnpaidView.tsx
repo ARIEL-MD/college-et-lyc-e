@@ -11,6 +11,64 @@ export const UnpaidView: React.FC = () => {
   const { students, classes, openModal, school, sendBulkSms, showToast } = useApp();
   const [classFilter, setClassFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+
+  const openClass = (id: string) => {
+    setSelectedClassId(id);
+    setClassFilter(id);
+    setSearchTerm('');
+  };
+  const backToClasses = () => {
+    setSelectedClassId(null);
+    setClassFilter('ALL');
+    setSearchTerm('');
+  };
+
+  // Vue 1 : impayés par classe
+  if (selectedClassId === null) {
+    const debtors = students.filter(s => s.unpaidTuition > 0);
+    const totalAll = debtors.reduce((sum, s) => sum + s.unpaidTuition, 0);
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Impayés</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {debtors.length} élève{debtors.length > 1 ? 's' : ''} avec un solde à régler, pour un total de {formatFCFA(totalAll)}. Choisissez une classe.
+          </p>
+        </div>
+
+        {classes.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">
+            Aucune classe enregistrée.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {classes.map(c => {
+              const list = debtors.filter(s => s.classId === c.id);
+              const total = list.reduce((sum, s) => sum + s.unpaidTuition, 0);
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => openClass(c.id)}
+                  className="text-left bg-white rounded-2xl border border-slate-200 p-5 hover:border-red-300 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-900">{c.name}</span>
+                    <span className="text-xs font-semibold text-slate-500">{list.length} élève{list.length > 1 ? 's' : ''}</span>
+                  </div>
+                  <p className="mt-3 text-xs text-slate-600">
+                    Total à recouvrer : <span className="font-bold text-slate-900">{formatFCFA(total)}</span>
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const currentClass = classes.find(c => c.id === selectedClassId);
 
   // Filter students who have unpaid tuition
   const unpaidStudents = students.filter(s => {
@@ -35,6 +93,13 @@ export const UnpaidView: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <button onClick={backToClasses} className="text-xs font-semibold text-blue-700 hover:underline cursor-pointer">
+          ← Toutes les classes
+        </button>
+        <span className="text-sm font-bold text-slate-900">{currentClass?.name ?? 'Classe'}</span>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -96,18 +161,6 @@ export const UnpaidView: React.FC = () => {
             className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-
-        <select
-          aria-label="Filtrer les impayés par classe"
-          value={classFilter}
-          onChange={(e) => setClassFilter(e.target.value)}
-          className="w-full md:w-52 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none"
-        >
-          <option value="ALL">Toutes les classes</option>
-          {classes.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
       </div>
 
       {/* Unpaid Students Table */}
